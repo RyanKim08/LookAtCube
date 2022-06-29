@@ -6,6 +6,28 @@ var gl;
 var points = [];
 var colors = [];
 
+var modelViewMatrix;
+var modelViewMatrixLoc;
+
+var projectionMatrix;
+var projectionMatrixLoc;
+
+var at = vec3(0.0, 0.0, 0.0);
+var up = vec3(0.0, 1.0, 0.0);
+
+var near = 0.1; //usually + .1 from the camera for perspective
+var far = 4.0; //arbitrary
+var left = -2.0;
+var right = 2.0;
+var ytop = 2.0;
+var bottom = -2.0;
+
+var fovy = 120.0;
+var isPerspective = true;
+
+var xAngle = 0.7;
+var yValue = 1.0;
+
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
 
@@ -49,6 +71,56 @@ window.onload = function init() {
     gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vPosition);
 
+    modelViewMatrixLoc = gl.getUniformLocation(program, "modelViewMatrix");
+    projectionMatrixLoc = gl.getUniformLocation(program, "projectionMatrix");
+
+    projectionMatrix = perspective(fovy, 1.0, near, far);
+    gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+
+    document.getElementById("pView").onclick =
+        function () {
+            isPerspective = true;
+            projectionMatrix = perspective(fovy, 1.0, near, far);
+            gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+
+            document.getElementById("pView").style.background = "lightgray";
+            document.getElementById("oView").style.background = "white";
+        };
+
+    document.getElementById("oView").onclick =
+        function () {
+            isPerspective = false;
+            projectionMatrix = ortho(left,right, bottom, ytop, near, far);
+            gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+
+            document.getElementById("pView").style.background = "white";
+            document.getElementById("oView").style.background = "lightgray";
+        };
+
+    document.getElementById("fSlide").onchange =
+        function (event) {
+            fovy = event.target.value;
+            if (isPerspective) {
+                projectionMatrix = perspective(fovy, 1.0, near, far);
+                gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+            }
+        };
+
+    document.getElementById("lRotate").onclick =
+        function () {
+            xAngle -= .1;
+        };
+
+    document.getElementById("rRotate").onclick =
+        function () {
+            xAngle += .1;
+        };
+
+    document.getElementById("ySlide").onchange =
+        function (event) {
+            yValue = event.target.value;
+        };
+
     render();
 }
 
@@ -57,6 +129,11 @@ window.onload = function init() {
 
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    var eye = vec3(Math.sin(xAngle), yValue, Math.cos(xAngle));
+
+    modelViewMatrix = lookAt(eye, at, up);
+    gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
 
     // Render cube
     gl.drawArrays(gl.TRIANGLES, 0, points.length);
